@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    .center{
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+    }
+  </style>
+</head>
+<body>
+
+
+  <div id="bbb" class="center"></div>
+  <div id="ccc"></div>
+  <script>
+  
+      class Clock{
+
+        constructor (el,w,h){
+          this.el  = document.getElementById(el)
+          this.wrap = null
+          this.digit = null
+          this.width = w
+          this.height = h
+          this.r = Math.floor(Math.max(w,h) / 2) - 2
+          this.x = Math.floor(w / 2)
+          this.y = Math.floor(h /2)
+          this.init()
+        }
+
+        init (){
+          this.createWrap()
+          this.painCtx = this.createCanvas()
+          this.hpainCtx = this.createCanvas()
+          this.mpainCtx = this.createCanvas()
+          this.spainCtx = this.createCanvas()
+        }
+        createWrap(){
+          var wrap = document.createElement('div')
+          wrap.style.width = this.width + 'px'
+          wrap.style.height = this.height + 'px'
+          wrap.style.position = 'relative'
+          this.el.appendChild(wrap)
+          this.wrap = wrap
+        }
+        createCanvas (){
+         var canvas = document.createElement('canvas');
+         canvas.width = this.width
+         canvas.height = this.height
+         Object.assign(canvas.style,{
+           position:'absolute',
+           top:0,
+           left:0
+         })
+         this.wrap.appendChild(canvas)
+         return canvas.getContext('2d')
+        }
+        getPoint(angle,n = 0){
+          var arc = angle * (2 * Math.PI/360)
+          var x = this.x + (this.r - n) * Math.cos(arc)
+          var y = this.y + (this.r - n) * Math.sin(arc)
+          return {x,y}
+        }
+        drawLine(ctx,x,y,x1,y1,width = 1 ,color = '#000'){
+          ctx.strokeStyle = color
+          ctx.lineWidth = width
+          ctx.beginPath()
+          ctx.moveTo(x,y)
+          ctx.lineTo(x1,y1)
+          ctx.stroke()
+        }
+        drawCircle(ctx,x,y,r,stroke = true,fill = false,color='#fff'){
+          ctx.beginPath()
+          ctx.fillStyle = color
+          ctx.arc(x,y,r, 0, 2*Math.PI)
+          if(fill){
+            ctx.fill()
+          }
+          if(stroke){
+            ctx.stroke()
+          }
+        }
+        drawpain(){
+          // 大圆
+          var c = this.painCtx
+          c.lineWidth = 4
+          c.beginPath()
+          c.arc(this.x,this.y,this.r,0,2*Math.PI)
+          c.stroke()
+        
+          // 刻度-小
+          for (var i = 1 ; i < 60 ; i++){
+            if( i % 5 !==0){
+              var {x:x1,y:y1} = this.getPoint(360 / 60 * i)
+              this.drawLine(c,this.x,this.y,x1,y1)
+            }
+          }
+          this.drawCircle(c,this.x,this.y,this.r - 10,false,true)
+
+           // 刻度-小
+          //刻度-大
+          for (var i = 0 ; i < 12 ; i++){
+            var {x:x1,y:y1} = this.getPoint(360 / 12 * i)
+            this.drawLine(c,this.x,this.y,x1,y1,4)
+          }
+          this.drawCircle(c,this.x,this.y,this.r - 25,false,true)
+          //刻度-大
+
+          //数字
+          var numbers = [3,4,5,6,7,8,9,10,11,12,1,2]
+          for (var i = 0 ; i < 12 ; i++){
+              var {x:x1,y:y1} = this.getPoint(360 / 12 * i,40)
+              c.fillStyle = '#000'
+              c.beginPath()
+              c.fillText(numbers[i],x1 - 4,y1 + 5)
+          }//数字
+        }
+        drawPointer(ctx,width,x,y,tx,ty,color = '#000'){
+          ctx.clearRect(0,0,this.width,this.height)
+          this.drawLine(ctx,tx,ty,x,y,width,color)
+        }
+        drawhpain(){
+          var d = new Date()
+          var h = d.getHours()
+          var m = d.getMinutes()
+          h = h > 12 ? h - 12 : h;
+          var mAngle = 360 / 12 / 60 * m 
+          var hAngle = 360 / 12 * h
+          hAngle += mAngle - 90
+          var reversehAngle = hAngle  + 180
+          var {x,y} = this.getPoint(hAngle,90)
+          var {x:tx,y:ty} = this.getPoint(reversehAngle,this.r -15)
+          this.drawPointer(this.hpainCtx,10,x,y,tx,ty)
+        }
+        drawmpain(){
+          var m = new Date().getMinutes()
+          var mAngle = 360 / 60 * m - 90
+          var reversemAngle = mAngle + 180
+          var {x,y} = this.getPoint(mAngle,60)
+          var {x:tx,y:ty} = this.getPoint(reversemAngle,this.r - 15)
+          this.drawPointer(this.mpainCtx,4,x,y,tx,ty)
+        }
+        drawspain(){
+          var d = new Date
+          var s = d.getSeconds()
+          var m = d.getMinutes()
+          var ms = s * 1000 + d.getMilliseconds()
+          var sAngle = 360 / 60000 * ms - 90
+          var reversesAngle = sAngle + 180
+          var {x,y} = this.getPoint(sAngle,35)
+          var {x:tx,y:ty} = this.getPoint(reversesAngle,this.r - 25)
+          this.drawPointer(this.spainCtx,2,x,y,tx,ty,'#f00')
+          this.drawCircle(this.spainCtx,this.x,this.y,5,true,true,'#fff')
+          this.drawDigit()
+          // this.drawDigit2()
+          if(s < 2){
+            this.drawhpain()
+            this.drawmpain()
+          }
+        }
+        drawDigit(){
+          if(!this.digit){
+            var digit =  document.createElement('div')
+            Object.assign(digit.style,{
+              position:'absolute',
+              top:'70%',
+              left:'50%',
+              transform:'translate(-50%,-50%)',
+              zIndex:10,
+              display:'inline-block',
+              background:'rgba(0,100,0,0.6)',
+              padding:'4px 2px',
+              color:'#fff'
+            })
+            this.wrap.appendChild(digit)
+            this.digit = digit
+          }
+          var d = new Date
+          var h = d.getHours()
+          var m = d.getMinutes()
+          var s = d.getSeconds()
+          h = h < 10 ? '0' + h : h
+          m = m < 10 ? '0' + m : m
+          s = s < 10 ? '0' + s : s
+          this.digit.textContent = `${h}:${m}:${s}`
+        }
+        drawDigit2(){
+          if(!this.digit2){
+            var digit =  document.createElement('div')
+            Object.assign(digit.style,{
+              position:'absolute',
+              top:'80%',
+              left:'50%',
+              transform:'translate(-50%,-50%)',
+              zIndex:10,
+              display:'inline-block',
+              background:'rgba(0,100,0,0.6)',
+              padding:'4px 2px',
+              color:'#fff'
+            })
+            this.wrap.appendChild(digit)
+            this.digit2 = digit
+          }
+          var d = new Date
+          var date = new Date(d.toLocaleDateString() + ' 18:30:00')
+          var seconds = (date.getTime() - Date.now() ) /1000
+          var h = parseInt(seconds / 60 / 60)
+          var m = parseInt(seconds / 60 - (h * 60) )
+          var s = parseInt(seconds - (h * 60 * 60) - (m * 60))
+          h = h < 10 ? '0' + h : h
+          m = m < 10 ? '0' + m : m
+          s = s < 10 ? '0' + s : s
+          this.digit2.textContent = `${h}:${m}:${s}`
+        }
+        draw(){
+          this.drawpain()
+          this.drawhpain()
+          this.drawmpain()
+          this.drawspain()
+          setInterval(()=>{
+            requestAnimationFrame(()=>{
+              this.drawspain()
+            })
+            
+          },50)
+        }
+      }
+
+     new Clock('bbb',300,300).draw()
+    //  new Clock('ccc',400,400).draw()
+
+  </script>
+</body>
+</html>

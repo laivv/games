@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+    body {
+        user-select: none;
+    }
+
+
+    .content-center {
+        text-align: center;
+    }
+
+
+
+
+    .tool-group {
+        padding: 30px 0;
+    }
+
+    .info-row {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .info-row span {
+        padding-top: 20px;
+    }
+
+    .controll {
+        position: relative;
+        height: 150px;
+        width: 200px;
+    }
+
+    .button {
+        height: 65px;
+        width: 65px;
+        display: inline-block;
+        background: green;
+        text-align: center;
+        color: #fff;
+        position: absolute;
+        line-height: 65px;
+    }
+
+    .l,
+    .r {
+        top: 50%;
+        transform: translateY(-50%)
+    }
+
+    .l {
+        left: 0;
+    }
+
+    .r {
+        right: 0;
+    }
+
+    .u,
+    .d {
+        transform: translateX(-50%);
+        left: 50%;
+    }
+
+    .u {
+
+        top: 0;
+    }
+
+    .d {
+        bottom: 0;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="content-center">
+        <canvas ref="canvas" id="canvas"></canvas>
+        <div class="controll">
+            <div class="button l" @click="move('l')">←</div>
+            <div class="button u" @click="move('t')">↑</div>
+            <div class="button d" @click="move('b')">↓</div>
+            <div class="button r" @click="move('r')">→</div>
+            <div class="button" @click="shoot" style="right:-150px;top:50%;transform: translateY(-50%)">shoot</div>
+        </div>
+        <div class="info-row" v-if="game">
+            <span>score:{{game.score}} </span>
+            <span>
+                level:{{game.level}}
+            </span>
+            <span>
+                life:{{game.lifeCount}}
+            </span>
+            <div>
+                按键盘的方向键控制坦克方向，回车键射击
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script>
+    <script>
+    function Game(width, height, id) {
+        this.row = height
+        this.col = width
+        this.map = []
+        this._map = []
+        this.tanks = []
+        this.player1 = null
+        this.player2 = null
+        this._events = {}
+        this.level = 1
+        this.lifeCount = 3
+        this.wipeOutCount = 0
+        this.tanksTotalCount = 5
+        this.createdTanksCount = 0
+        this.score = 0
+        this.createMap()
+        this._id = id
+        this._el = document.getElementById(id)
+        this._el.width = width * 20
+        this._el.height = height * 20
+        this.canvas = this._el.getContext('2d')
+    }
+    Object.assign(Game.prototype, {
+        createMap() {
+            var map = []
+            for (var i = 0; i < this.row; i++) {
+                var row = [];
+                for (var j = 0; j < this.col; j++) {
+                    row.push(0)
+                }
+                map.push(row)
+            }
+            this._map = map
+        },
+        createTank() {
+            var createableLoc = [
+                    [1, 1],
+                    [this.col - 2, this.row - 2],
+                    [this.col - 2, 1],
+                    [1, this.row - 2]
+                ],
+                tank, success = false,
+                ctx = this
+
+            for (var i = 0, size = createableLoc.length; i < size; i++) {
+                var loc = createableLoc[i]
+                tank = new Tank(loc[0], loc[1], Tank.getRandomDir(), this)
+                if (tank.collisionCheck()) {
+                    success = true
+                    break
+                }
+            }
+            if (!success) {
+                setTimeout(function() {
+                    ctx.createTank()
+                }, 1000)
+                return this
+            }
+            tank.autoShoot().autoMove()
+            this.tanks.push(tank)
+            this.createdTanksCount++
+            return this
+        },
+        on(eventName, callback) {
+            if (!this._events[eventName]) {
+                this._events[eventName] = []
+            }
+            this._events[eventName].push(callback)
+        },
+        emit() {
+            var args = Array.from(arguments)
+            var eventName = args.shift()
+            var callbacks = this._events[eventName] || []
+            var ctx = this
+            callbacks.forEach(function(callback) {
+                callback.apply(ctx, args)
+            })
+        },
+        start() {
+            this.createPlayer()
+                .render()
+                .createTank()
+                .createTank()
+                .createTank()
+                .createTank()
+            if (this.level === 1) {
+                this.listenKeyBoard()
+                    .watchTank()
+            }
+        },
+        nextStage() {
+            this.tanks = []
+            this.player1 = null
+            this.player2 = null
+            this.level++
+            this.lifeCount++
+            this.wipeOutCount = 0
+            this.createdTanksCount = 0
+            this.start()
+        },
+        finish() {
+            this.tanks.forEach(function(tank) {
+                tank.stopAutoMove().stopAutoShoot()
+            })
+            this.canvas.font = '48px serif';
+            this.canvas.fillStyle = '#000'
+            this.canvas.fillText('Game Over', this._el.width / 2, this._el.height / 2);
+        },
+        watchTank() {
+            this.on('tankDestory', function(tank) {
+
+                if (tank.type === 1) {
+                    if (this.lifeCount > 0) {
+                        this.createPlayer()
+                        this.lifeCount--
+                    } else {
+                        this.finish()
+                    }
+                } else {
+                    this.score++
+                    this.wipeOutCount++
+                    if (this.createdTanksCount < this.tanksTotalCount) {
+                        setTimeout(function() {
+                            this.createTank()
+                        }.bind(this), 1000)
+                    } else if (this.wipeOutCount === this.tanksTotalCount) {
+                        this.nextStage()
+                    }
+                }
+
+
+            })
+        },
+        createPlayer() {
+            var x = Math.floor(this.row / 2)
+            var y = Math.floor(this.col / 2)
+            this.player1 = new Tank(x, y, 't', this, 1)
+            this.tanks.push(this.player1)
+            return this
+        },
+        listenKeyBoard: function() {
+            if (!this.player1) return this
+            var ctx = this;
+            var keyCodeDirMap = {
+                38: 't',
+                40: 'b',
+                37: 'l',
+                39: 'r'
+            }
+            document.addEventListener('keydown', function(e) {
+                var keyCode = e.keyCode
+                if (keyCode === 13) {
+                    ctx.player1 && ctx.player1.shoot()
+                } else if ([37, 38, 39, 40].includes(keyCode)) {
+                    var dir = keyCodeDirMap[keyCode]
+                    ctx.player1 && ctx.player1.move(dir)
+                }
+            })
+            return this
+        },
+        render() {
+            var ctx = this
+            var oldMap = this._map
+            this.createMap()
+            this.tanks.forEach(function(tank) {
+                if (!tank.death) {
+                    tank.getShape().forEach(function(loc) {
+                        var x = loc[0],
+                            y = loc[1]
+                        try {
+                            ctx._map[y][x] = 1
+                        } catch (e) {}
+                    })
+                }
+
+                if (tank.bullet) {
+                    try {
+                        ctx._map[tank.bullet.y][tank.bullet.x] = 1
+                    } catch (e) {}
+                }
+            })
+
+            // 算出差异部分
+            var diff = []
+            oldMap.forEach(function(row, yIndex) {
+                row.forEach(function(col, xIndex) {
+                    var currentCol = ctx._map[yIndex][xIndex]
+                    if (col !== currentCol) {
+                        diff.push([xIndex, yIndex, currentCol])
+                    }
+                })
+            })
+            diff.forEach(function(data) {
+                ctx.canvas.fillStyle = data[2] ? '#000' : '#fff'
+                var x = data[0] * 20,
+                    y = data[1] * 20
+                ctx.canvas.fillRect(x, y, 20, 20)
+            })
+            return this
+        },
+        move(dir) {
+            this.player1 && this.player1.move(dir)
+        },
+        shoot() {
+            this.player1 && this.player1.shoot()
+        }
+    })
+
+
+
+    function Tank(x, y, dir, gameContext, type) {
+        this.x = x
+        this.y = y
+        this.dir = dir
+        this.bullet = null
+        this.gameContext = gameContext
+        this._row = gameContext._map.length
+        this._col = gameContext._map[0].length
+        this.timer = null
+        this.type = type === undefined ? 0 : type
+        this.death = 0
+    }
+    Tank.getRandomDir = function() {
+        var random = Math.floor(Math.random() * 4)
+        random = random > 3 ? 3 : random
+        var dirmap = {
+            0: 'b',
+            1: 't',
+            2: 'l',
+            3: 'r'
+        }
+        return dirmap[random]
+    }
+    Object.assign(Tank.prototype, {
+        destory() {
+            if (this.type === 1) {
+                this.gameContext.player1 = null
+            } else {
+                this.stopAutoMove()
+            }
+            // 不能直接将当前tank移除，因为它可能射击bullet飞行中，bullet依赖tank渲染
+            this.death = 1
+            return this
+        },
+        getShape() {
+            var shape = [],
+                dir = this.dir,
+                x = this.x,
+                y = this.y
+            shape.push([x, y])
+            if (dir === 'r') {
+                shape.push([x + 1, y], [x, y - 1], [x, y + 1], [x - 1, y + 1], [x - 1, y - 1])
+            } else if (dir === 'l') {
+                shape.push([x - 1, y], [x, y - 1], [x, y + 1], [x + 1, y + 1], [x + 1, y - 1])
+            } else if (dir === 't') {
+                shape.push([x, y - 1], [x - 1, y], [x + 1, y], [x - 1, y + 1], [x + 1, y + 1])
+            } else if (dir === 'b') {
+                shape.push([x, y + 1], [x - 1, y], [x + 1, y], [x - 1, y - 1], [x + 1, y - 1])
+            }
+            return shape
+        },
+        collisionCheck() {
+            var thisShape = this.getShape()
+            var otherTanks = this.gameContext.tanks.filter(function(tank) {
+                return tank !== this && !tank.death
+            }.bind(this))
+            for (var i = 0, len = otherTanks.length; i < len; i++) {
+                var tank = otherTanks[i]
+                var shape = tank.getShape()
+                for (var j = 0, size = thisShape.length; j < size; j++) {
+                    var locA = thisShape[j]
+                    var isOverlap = shape.find(function(locB) {
+                        return locB[0] === locA[0] && locB[1] === locA[1]
+                    })
+                    if (isOverlap) {
+                        return false
+                    }
+                }
+            }
+            return true
+        },
+        move(dir) {
+            var x = this.x,
+                y = this.y
+
+            if (dir !== undefined && dir !== this.dir) {
+                this.dir = dir
+            } else {
+                if (this.dir === 'r') {
+                    this.x++
+                    var max = this._col - 2
+                    if (this.x > max) {
+                        this.x = max
+                        return false
+                    }
+                }
+                if (this.dir === 'l') {
+                    this.x--
+                    if (this.x < 1) {
+                        this.x = 1
+                        return false
+                    }
+
+                }
+                if (this.dir === 't') {
+                    this.y--
+                    if (this.y < 1) {
+                        this.y = 1
+                        return false
+                    }
+                }
+                if (this.dir === 'b') {
+                    this.y++
+                    var max = this._row - 2
+                    if (this.y > max) {
+                        this.y = max
+                        return false
+                    }
+                }
+            }
+            if (!this.collisionCheck()) {
+                this.x = x
+                this.y = y
+                return false
+            }
+            this.gameContext.render()
+            return true
+        },
+        autoMove() {
+            this.timer = setInterval(function() {
+                var dir = this.dir
+                var random = Math.random() * 10
+                if (random > 8) {
+                    dir = Tank.getRandomDir()
+                }
+                if (!this.move(dir)) {
+                    do {
+                        dir = Tank.getRandomDir()
+                    } while (dir === this.dir)
+                    this.move(dir)
+                }
+            }.bind(this), 50 - (this.gameContext.level - 1) * 50)
+            return this
+        },
+        stopAutoMove() {
+            if (this.timer) {
+                clearInterval(this.timer)
+                this.timer = null
+            }
+            return this
+        },
+        autoShoot() {
+            var random = Math.floor(Math.random() * 1000) + 1000
+            this.shootTimer = setTimeout(function() {
+                this.shoot()
+                this.autoShoot()
+            }.bind(this), random)
+            return this
+        },
+        stopAutoShoot() {
+            if (this.shootTimer) {
+                clearTimeout(this.shootTimer)
+                this.shootTimer = null
+            }
+            // if (this.bullet) {
+            //     this.bullet.destory()
+            //     this.bullet = null
+            // }
+        },
+        shoot() {
+            if (!this.bullet) {
+                this.bullet = new Bullet(this)
+            }
+            return this
+        }
+    })
+
+
+
+
+    function Bullet(tank) {
+        this.tank = tank
+        this.dir = tank.dir
+        this.timer = null
+        this.init()
+        this.moveAnimation()
+    }
+    Object.assign(Bullet.prototype, {
+        init() {
+            if (this.dir === 'l') {
+                this.x = this.tank.x - 2
+                this.y = this.tank.y
+            }
+            if (this.dir === 'r') {
+                this.x = this.tank.x + 2
+                this.y = this.tank.y
+            }
+            if (this.dir === 't') {
+                this.x = this.tank.x
+                this.y = this.tank.y - 2
+            }
+            if (this.dir === 'b') {
+                this.x = this.tank.x
+                this.y = this.tank.y + 2
+            }
+        },
+        collisionCheck() {
+            var ctx = this
+            var type = this.tank.type
+            var opponentTanks = this.tank.gameContext.tanks.filter(function(tank) {
+                if (type === 1) {
+                    return !tank.type && !tank.death
+                } else {
+                    return tank.type && !tank.death
+                }
+            })
+            for (var i = 0, len = opponentTanks.length; i < len; i++) {
+                var tank = opponentTanks[i]
+
+                var bullet = tank.bullet
+                if (bullet && bullet.x === this.x && bullet.y === this.y) {
+                    bullet.destory()
+                    this.destory()
+                    return
+                }
+
+                var shape = tank.getShape()
+                for (var j = 0, size = shape.length; j < size; j++) {
+                    var loc = shape[j]
+                    if (loc[0] === this.x && loc[1] === this.y) {
+                        tank.destory().gameContext.emit('tankDestory', tank)
+                        this.destory()
+                        return
+                    }
+                }
+            }
+
+        },
+        moveStep() {
+            if (this.dir === 'l') {
+                this.x--
+            }
+            if (this.dir === 'r') {
+                this.x++
+            }
+            if (this.dir === 't') {
+                this.y--
+            }
+            if (this.dir === 'b') {
+                this.y++
+            }
+            if (this.x <= 0 || this.x >= this.tank._col || this.y <= 0 || this.y >= this.tank._row) {
+                return false
+            }
+            return true
+        },
+        moveAnimation() {
+            this.timer = setInterval(function() {
+                this.collisionCheck()
+                if (!this.moveStep()) {
+                    this.destory()
+                }
+                this.tank.gameContext.render()
+            }.bind(this), 80 - (this.tank.gameContext.level - 1) * 10)
+        },
+        destory() {
+            clearInterval(this.timer)
+            this.timer = null
+            this.tank.bullet = null
+            if (this.tank.death) {
+                var index = this.tank.gameContext.tanks.indexOf(this.tank)
+                if (index > -1) {
+                    this.tank.gameContext.tanks.splice(index, 1)
+                }
+            }
+        }
+    })
+
+    new Vue({
+        el: '#app',
+        data: function() {
+            return {
+                game: null,
+            }
+        },
+        mounted() {
+            this.game = new Game(20, 20, 'canvas')
+            this.game.start()
+
+
+
+        },
+        methods: {
+            move(dir) {
+                this.game.move(dir)
+            },
+            shoot() {
+                this.game.shoot()
+            }
+
+        }
+    })
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  <script src="observe.js"></script>
+  <script>
+  
+
+  var vm = observe([
+    {name:'lingluo', age:18, otherInfo: { company :'uoko', companyInfo: { name : '优客免家' } }},
+    {name:'zz', age:16, otherInfo: { company :'uoko2', companyInfo: { name : '优客免家2' } }},
+    ],function(path, newVal, oldVal){
+      console.log('值发生改变----- key：',path)
+      console.log('值发生改变---- 新值：',newVal)
+      console.log('值发生改变-----旧值：',oldVal)
+    })
+
+  </script>
+</body>
+</html>

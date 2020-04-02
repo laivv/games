@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    body{
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      width: 100%;
+    }
+  
+    .main{
+      width: 100%;
+     text-align: center;
+    }
+    .main::after{
+      content: '';
+      display: block;
+      height: 0;
+      visibility: hidden;
+      clear: both;
+    }
+    .wrapper{
+      border-top: solid 1px #e9e9e9;
+      border-left: solid 1px #e9e9e9;
+      display: inline-block;
+    }
+
+    .item{
+      height:10px;
+      width:10px;
+      border-right:solid 1px #e9e9e9;
+      border-bottom: solid 1px #e9e9e9;
+      float: left;
+    }
+    .item.black{
+      background: black;
+    }
+
+    .row::after{
+      content: '';
+      display: block;
+      visibility: hidden;
+      height: 0;
+      width: 0;
+      clear: both;
+    }
+    .controll{
+      position: relative;
+      height: 200px;
+      width:200px;
+    }
+    .button{
+      height: 65px;
+      width: 65px;
+      display: inline-block;
+      background: green;
+      text-align: center;
+      color: #fff;
+      position: absolute;
+      line-height: 65px;
+    }
+    .l,.r{
+      top:50%;
+      transform: translateY(-50%)
+    }
+    .l{
+      left:0;
+    }
+    .r{
+      right: 0;
+    }
+    .u,.d{
+      transform: translateX(-50%);
+      left:50%;
+    }
+    .u{
+    
+      top:0;
+    }
+    .d{
+      bottom: 0;
+    }
+    </style>
+</head>
+<body>
+    <div id="app">
+      <div class="main">
+          <div style="display: inline-block;vertical-align: top">
+            <div class="wrapper" :class="{start:status === 1}">
+              <div v-for="(row,r) in matrix" class="row">
+              <div v-for="(item,c) in row" class="item" :class="{black: item == 1}" ></div>
+              </div>
+            </div>
+          </div>
+          <div style="display: inline-block;vertical-align: top;font-weight: bold">
+            <div>
+              level:{{level}}
+            </div>
+            <div>
+              score:{{score}}
+            </div>
+          </div>
+      </div>
+      <div>
+        按键盘的方向键←↑↓→来操作方块
+      </div>
+      <div class="controll">
+        <div class="button l" @click="move(-1)" @@touchstart="touchstart(-1)" @@touchend="touchend">←</div>
+        <div class="button u" @click="rotate">↑</div>
+        <div class="button d" @click="movedown(0)">↓</div>
+        <div class="button r" @click="move(1)"  @@touchstart="touchstart(1)" @@touchend="touchend">→</div>
+        <div class="button" @click="rotate" style="right:-150px;top:50%;transform: translateY(-50%)">旋转</div>
+      </div>
+      </div>
+    <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script>
+  <script>
+        new Vue({
+      el:"#app",
+      data:function(){
+        return {
+          rows:20,
+          cols:10,
+          matrix:[],
+          shapes:[
+            [['0110','0110']],
+            [['0100','0100','0100','0100'],['1111']],
+            [['1100','0110'],['0100','1100','1000']],
+            [['0011','0110'],['0100','0110','0010']],
+            [['0100','1110'],['0100','0110','0100'],['1110','0100'],['0100','1100','0100']],
+            [['1110','1000'],['0110','0010','0010'],['0010','1110'],['0100','0100','0110']],
+            [['0010','0010','0110'],['1000','1110'],['0110','0100','0100'],['1110','0010']],
+          ],
+          shape:null,
+          shapeIndex:0, 
+          downIndex:4, 
+          sourceMatrix:[],
+          interval:1000,
+          score:0,
+          level:1,
+          timer:null,
+          intervalmovetimer:null,
+        }
+      },
+      mounted() {
+        this.initMap(this.rows,this.cols)
+        this.initShapes()
+        this.movedown()
+        document.addEventListener('keydown',function(e){
+            if(e.keyCode === 37){
+              this.move(-1);
+            }
+            if(e.keyCode === 39){
+              this.move(1);
+            }
+            if(e.keyCode === 38) {
+              this.rotate()
+            }
+            if(e.keyCode === 40) {
+              this.down()
+            }
+        }.bind(this))
+      },
+      methods:{
+        initShapes:function(){
+          var ctx = this;
+          this.shapes = this.shapes.map(function(row){
+            return row.map(function(shape){
+              return shape.map(function(dot){
+                var offset = Math.floor(ctx.cols / 2) - 2
+                offset = offset < 0 ? 0 : offset;
+                return dot.padStart(offset + 4,'0').padEnd(ctx.cols,'0')
+              })
+            })
+          })
+        },
+        getRandomShape:function(){
+         var index = Math.floor(Math.random() * this.shapes.length)
+         this.shape = this.shapes[index].slice(0)
+         this.shapeIndex = Math.floor(Math.random() * (this.shape.length))
+         this.downIndex = 0
+         this.sourceMatrix = this.matrix.slice(0)
+        },
+        
+        movedown:function(speed){
+          if(this.timer){
+            clearInterval(this.timer)
+            this.timer = null
+          }
+          var interval = typeof speed === 'undefined' ? this.interval - this.level * 50 : speed 
+          this.timer = setInterval(function(){
+            if(
+              this.shape === null || 
+              this.downIndex > this.rows - 1
+            ){
+               this.resolve()
+               this.getRandomShape()
+               this.movedown()
+            }
+            this.render()
+            this.downIndex ++
+          }.bind(this),interval)
+       
+        },
+        stopGame:function(){
+          clearInterval(this.timer)
+          setTimeout(function(){
+             alert('game over')
+              this.timer = null
+          },100)
+        },
+        render:function(){
+          var ret = []
+          var next = true
+            for (var i = 0 , len = this.shape[this.shapeIndex].length ; i < len ; i ++){
+              var targetIndex = this.downIndex - i
+              if(targetIndex < 0){
+                continue
+              }
+              var selfRow = this.shape[this.shapeIndex][i].split('')
+              var targetRow = this.sourceMatrix[targetIndex].split('')
+              var mergeRet = this.merge(selfRow,targetRow)
+              if(!mergeRet){
+                next = false
+              }
+             ret.push(mergeRet)
+            }
+          if (!next) {
+            if(this.isGameOver()){
+              this.stopGame()
+            } else {
+              this.resolve()
+              this.getRandomShape()
+              this.movedown()
+            }
+            return 
+          }
+            var contextMatrix = this.sourceMatrix.slice(0)
+            for (var i = 0 , len = ret.length ; i < len ; i ++){
+              var newRow = ret[i].join('')
+              contextMatrix.splice(this.downIndex - i,1,newRow);
+            }
+            this.matrix = contextMatrix
+        },
+        move:function(n){
+         for(var i = 0 , len = this.shape.length ; i < len ; i ++){
+           var shape = this.shape[i];
+           var replace = []
+           var next = true
+           for (var j = 0 , size = shape.length ; j < size ; j ++){
+              var index = n === -1 ? 0 : shape[j].length - 1
+              if(shape[j][index] === '1'){
+                next = false
+              } 
+              var shapUnit = n === -1 ? shape[j].slice(1) + '0' : '0' + shape[j].substr(0,shape[j].length -1)
+              replace.push(shapUnit)
+           }
+           if(next){
+             this.shape.splice(i,1,replace)
+           }
+         }
+         this.render()
+        },
+        rotate:function(){
+          var maxIndex = this.shape.length - 1
+          var shapeIndex = this.shapeIndex + 1
+          shapeIndex = shapeIndex > maxIndex ? 0 : shapeIndex
+          this.shapeIndex = shapeIndex
+          this.render()
+        },
+        down:function(){
+          this.movedown(0)
+        },
+        touchstart:function(n){
+          if(this.intervalmovetimer){
+            clearInterval(this.intervalmovetimer)
+            this.intervalmovetimer = null
+          }
+          this.intervalmovetimer = setInterval(function(){
+            this.move(n)
+          }.bind(this),100)
+        },
+        touchend:function(){
+          clearInterval(this.intervalmovetimer)
+        },
+        resolve:function(){
+          var score = 0
+          for (var i = 0 ,len = this.matrix.length ; i < len ; i ++){
+            if(this.matrix[i].indexOf('0') === -1){
+              this.matrix.splice(i,1)
+              this.matrix.unshift(''.padStart(this.cols,'0'))
+              i--
+              score ++
+            }
+          }
+          var scoremap = {
+            0:0,
+            1:2,
+            2:4,
+            3:8,
+            4:16
+          }
+          this.score += scoremap[score]
+          this.level = Math.ceil(this.score / 200) || 1
+        },
+        merge:function(source,target){
+          var ret = []
+          for(var i = 0 , len = source.length ; i < len ; i ++){
+            var s = source[i]
+            var t = target[i]
+            if(s === t && s === '1'){
+              return false
+            }
+            ret.push( Number(s) | Number(t) )
+          }
+          return ret
+        },
+        initMap: function (rows,cols){
+          var ret = []
+          for ( var i = 0; i < rows ; i ++){
+            var row = []
+            for (var j = 0 ; j < cols; j++){
+              row.push(0)
+            }
+            ret.push(row.join(''))
+          }
+          this.matrix = ret
+        },
+        isGameOver:function(){
+          return this.matrix[0].indexOf('1') > -1
+        }
+      }
+    })
+  </script>
+</body>
+</html>

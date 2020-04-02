@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    #app{
+      min-width: 1000px;
+      overflow: auto;
+    }
+    .wrapper{
+      border-top: solid 1px #ccc;
+      border-left: solid 1px #ccc;
+      display: inline-block;
+    }
+    .start .item{
+      cursor: pointer;
+    }
+    .item{
+      height:30px;
+      width:30px;
+      border-right:solid 1px #ccc;
+      border-bottom: solid 1px #ccc;
+      float: left;
+    }
+    .circle{
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      margin: 5px auto;
+    }
+    .circle.red{
+      background: red;
+      box-shadow:  1px 1px 1px #f66;
+    }
+    .circle.black{
+      background: black;
+      box-shadow:  1px 1px 1px #aaa;
+    }
+    .row::after{
+      content: '';
+      display: block;
+      visibility: hidden;
+      height: 0;
+      width: 0;
+      clear: both;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="wrapper" :class="{start:status === 1}">
+      <div v-for="(row,r) in matrix" class="row">
+        <div v-for="(item,c) in row" class="item" @click="play(r,c)">
+          <div class="circle" :class="{red: item === 1, black: item === 2}"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <button @click="doAction">{{status ? '重新开始' : '开始'}}</button>
+    </div>
+  </div>
+
+ 
+  <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script>
+  <script>
+    new Vue({
+      el:"#app",
+      data:function(){
+        return {
+          matrix:getmatrix(20,20),
+          current:1,
+          status:0,
+        }
+      },
+      methods:{
+        doAction:function(){
+          if(this.status === 0){
+            this.status = 1;
+          }
+          this.matrix = getmatrix(20,20);
+        },
+        play:function(r,c){
+          if(this.status && this.matrix[r][c] === 0){
+            this.matrix[r].splice(c,1,this.current);
+            this.checkResult();
+            this.current = this.current === 1 ? 2 : 1;
+          }
+        
+        },
+        checkResult :function(){
+          if(
+            checkH(this.matrix,this.current) ||
+            checkV(this.matrix,this.current) ||
+            checkS(this.matrix,this.current)
+          ){
+            var msg = this.current === 1 ? '红方胜利' : '黑方胜利';
+            setTimeout(function(){
+              alert(msg);
+            },10)
+            this.status = 0;
+          }
+        }
+      }
+    })
+
+    function getmatrix(rows,cols){
+      var ret = [];
+      for ( var i = 0; i <cols ; i ++){
+        var row = [];
+        for (var j = 0 ; j < rows; j++){
+          row.push(0)
+        }
+        ret.push(row)
+      }
+      return ret;
+    }
+
+    function checkH(a,n){
+      for (var i = 0, len = a.length ; i < len ; i ++) {
+        var row = a[i];
+        var join = 0;
+        for (var j = 0 , size = row.length ; j < size ; j ++){
+          join = row[j] === n ? ++ join : 0;
+          if(join === 5) return true;
+        }
+      }
+      return false;
+    }
+
+    function checkV(a,n){
+      for(var i = 0, len = a[0].length ; i < len ; i ++){
+        var join = 0;
+        for (var j = 0 ,size = a.length ; j < size ; j ++){
+          join = a[j][i] === n ? ++ join : 0;
+          if(join === 5) return true;
+        }
+      }
+      return false;
+    }
+
+  
+    function checkS(a,n){
+     
+      var rows = a.length - 1;
+      var cols = a[0].length - 1;
+
+       // 东北-西南-左上
+      for (var i = cols ;i >= 4; i--){
+        var join = 0;
+        var c = i;
+        var r = 0;
+        while(true){
+          join = a[r][c] === n ? ++join : 0;
+          if(join === 5) return true;
+          if(c === 0 || r === rows){
+            break;
+          }
+          c--;
+          r++;
+        }
+      }
+
+        // 东北-西南-右下
+        for (var i = rows - 3 ;i >=0; i--){
+        var join = 0;
+        var c = cols;
+        var r = i;
+        while(true){
+          join = a[r][c] === n ? ++join : 0;
+          if(join === 5) return true;
+          if(c === 0 || r === rows){
+            break;
+          }
+          c--;
+          r++;
+        }
+      }
+
+        // 西北-东南-左下
+        for (var i = rows - 3 ;i >=0; i--){
+        var join = 0;
+        var c = 0;
+        var r = i;
+        while(true){
+          join = a[r][c] === n ? ++join : 0;
+          if(join === 5) return true;
+          if(c === cols || r === rows){
+            break;
+          }
+          c++;
+          r++;
+        }
+      }
+
+        // 西北-东南-右上
+        for (var i = rows - 3 ;i >=0; i--){
+        var join = 0;
+        var c = i;
+        var r = 0;
+        while(true){
+          join = a[r][c] === n ? ++join : 0;
+          if(join === 5) return true;
+          if(c === 0 || r === rows){
+            break;
+          }
+          c--;
+          r++;
+        }
+      }
+      return false;
+    
+    }
+
+
+  </script>
+</body>
+</html>
