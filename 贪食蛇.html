@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    .item{
+      display: block;
+      float: left;
+      width:15px;
+      height: 15px;
+      border:solid 1px #ccc;
+    }
+    .row::after{
+      content: '';
+      display: block;
+      visibility: hidden;
+      height: 0;
+      width: 0;
+      clear: both;
+    }
+    .fill{
+      background: rgb(54, 82, 12);
+    }
+    .content-center{
+      text-align: center;
+    }
+    .wrap{
+      display: inline-block;
+      position: relative;
+    }
+    .form-item{
+      height: 30px;
+      margin-top: 20px
+    }
+    .pf-center{
+      position: absolute;
+      background: #fff;
+      top:50%;
+      left: 50%;
+      width:150px;
+      height: 100px;
+      box-shadow: 2px 2px 4px #000;
+      transform: translate(-50%,-50%);
+      line-height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="content-center">
+    <div class="wrap">
+      <div class="wrap">
+          <div v-for="item in map" class="row">
+            <div v-for="one in item" class="item" :class="{fill:one}"></div>
+          </div>
+          <div class="pf-center" v-if="isOver">game over</div>
+      </div>
+    <div>
+      <button @click="gameStart" class="form-item">开始</button>
+      <select @change="changeMap" v-model="mapLevel.id" class="form-item">
+        <option :value="1">入门</option>
+        <option :value="2">初级</option>
+        <option :value="3">中级</option>
+        <option :value="4">高级</option>
+      </select>
+      得分:{{score}}
+    </div>
+  </div>
+  </div>
+  
+  <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script>
+  <script>
+     
+   new Vue({
+     el:'#app',
+     data:function(){
+       return {
+         isOver:false,
+         score:0,
+         mapLevel:{
+           id:1,
+         
+            1:{
+               speed:300,
+               map:[10,10]
+             },
+             2:{
+               speed:200,
+               map:[20,20]
+             },
+             3:{
+               speed:100,
+               map:[40,40]
+             },
+             4:{
+               speed:5,
+               map:[60,50]
+             },
+
+          
+         },
+         map:[],
+         snake:{dir:'',shape:[],speed:0},
+         food:[],
+       }
+     }
+     ,
+     mounted() {
+      this.changeMap()
+     },
+     methods:{
+      changeMap(){
+        this.createMap.apply(this,this.mapLevel[this.mapLevel.id].map)
+      },
+      gameStart:function(){
+        this.score = 0
+        this.isOver = false
+        this.createSnake()
+        this.renderSnakeOnMap()
+        this.snakeRun()
+        this.createFood()
+        this.renderFoodOnMap()
+        this.listenKeyBoard()
+      },
+      createMap (row, col){
+        this._row = row
+        this._col = col
+        var map = []
+        for (var i = 0; i < col;i++){
+          var rows = [];
+          for(var j = 0; j < row;j++){
+            rows.push(0)
+          }
+          map.push(rows)
+        }
+         this.map = map
+      },
+      createSnake(){
+        this.snake = {
+          dir:'ltr',
+          shape:[[0,0],[0,1],[0,2],[0,3]],
+          speed:this.mapLevel[this.mapLevel.id].speed
+        }
+      },
+      compareFoodLocationWithSnake(food){
+        return !!this.snake.shape.find(function(item){
+          return item[0] === food[0] && item[1] === food[1]
+        })
+
+      },
+      createFood(){
+        var food
+        do {
+          var c = Number.parseInt(Math.random() * (this._row - 1)), r = Number.parseInt(Math.random() * (this._col - 1))
+          food = [r,c]
+        } while( this.compareFoodLocationWithSnake(food) )
+        this.food = food
+      },
+      renderSnakeOnMap(){
+        this.createMap(this._row,this._col)
+        this.snake.shape.forEach(function(px){
+          var r = px[0], c = px[1]
+          this.map[r][c] = 1
+        }.bind(this))
+      },
+      renderFoodOnMap(){
+        var r = this.food[0], c= this.food[1]
+        this.map[r][c] = 1
+      },
+      eatFood(){
+        if(this.compareFoodLocationWithSnake(this.food)){
+          this.score += 3
+          var food = this.food.slice(0)
+          this.createFood()
+          this.snake.speed -= 10
+          this.snake.speed = this.snake.speed < 15 ? 15 : this.snake.speed
+          this.snake.shape.push(this.createSnakeHead())
+          this.renderSnakeOnMap()
+        }
+      },
+      checkEatSelf(){
+        var shape = this.snake.shape;
+        for(var i = 0 , len = shape.length ; i < len - 1 ; i ++){
+          var snakeChunk = shape[i]
+          for (var j = i + 1 ; j < len ; j ++){
+            if(snakeChunk[0] === shape[j][0] && snakeChunk[1] === shape[j][1]){
+              return true
+            }
+          }
+        }
+        return false
+      },
+          createSnakeHead(){
+            var snakeHead = this.getSnakeHead(this.snake.shape)
+            var dir = this.snake.dir
+            if(dir === 'ltr' || dir === 'rtl'){
+              var c = snakeHead[1] + (dir === 'ltr' ? 1: -1), r = snakeHead[0]
+              var maxWidth = this.getMapWidth(this.map)
+              if(dir === 'ltr' && c > maxWidth){
+                return false
+              }
+              if(dir === 'rtl' && c < 0) {
+                return false
+              }
+            } 
+            if(dir === 'ttb' || dir === 'btt'){
+              var snakeHead = this.getSnakeHead(this.snake.shape)
+              var c = snakeHead[1], r = snakeHead[0] + (dir === 'ttb' ? 1 : -1)
+              var maxHeight = this.getMapHeight(this.map)
+              if(dir === 'ttb' && r > maxHeight){
+                return false
+              }
+              if(dir === 'btt' && r < 0){
+                return false
+              }
+            }
+            return [r,c]
+          },
+          getSnakeHead (array){
+            return array[array.length - 1]
+          },
+          getMapWidth(map){
+            return map[0].length - 1
+          },
+          getMapHeight(map){
+            return map.length - 1
+          },
+          snakeMove(shape, map){
+            var snakeHead = this.createSnakeHead()
+            if(snakeHead){
+              shape.shift()
+              shape.push(snakeHead)
+              return true
+            } else {
+              return false
+            }
+          },
+      snakeRun:function(){
+        var timer = null;
+        return function(){
+          var ctx = this
+          if(timer){
+            clearTimeout(timer)
+            timer = null
+          }
+          timer = setTimeout(function(){
+            var ret = ctx.snakeMove(ctx.snake.shape,ctx.map)
+            if(!ret
+             || ctx.checkEatSelf()
+             ){
+              clearTimeout(timer)
+              ctx.isOver = true
+              return 
+            }
+            ctx.renderSnakeOnMap()
+            ctx.renderFoodOnMap()
+            ctx.snakeRun()
+            ctx.eatFood()
+
+          }.bind(ctx),ctx.snake.speed)
+        }
+       
+      }(),
+
+      listenKeyBoard:function(){
+        var ctx = this;
+        var mutexKeyCodeMap = {
+          btt:'ttb',
+          ttb:'btt',
+          rtl:'ltr',
+          ltr:'rtl',
+        }
+        var keyCodeDirMap = {
+          38:'btt',
+          40:'ttb',
+          37:'rtl',
+          39:'ltr'
+        }
+        document.addEventListener('keydown',function(e){
+          var keyCode = e.keyCode
+          if([37,38,39,40].includes(keyCode)){
+            var dir = keyCodeDirMap[keyCode]
+            if(ctx.snake.dir !== mutexKeyCodeMap[dir]){
+              ctx.snake.dir = dir
+            }
+          }
+        })
+      }
+     }
+     })
+  </script>
+</body>
+</html>
