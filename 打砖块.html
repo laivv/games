@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+      body{
+        margin: 0;
+        box-sizing: border-box;
+        overflow-x: hidden;
+      }
+    .btn-item {
+        flex: 1;
+        height: 50px;
+        padding: 0 5px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    .bg-gray {
+        background-color: #ccc;
+        width: 100%;
+        height: 100%;
+    }
+
+    .dialog {
+        display: inline-block;
+        position: fixed;
+        top: 50px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 30px 40px;
+        box-sizing: border-box;
+        box-shadow: 0 0 5px #888;
+        background-color: #fff;
+        text-align: center;
+    }
+
+    .btn-group {
+        display: flex;
+    }
+
+    .btn-pause {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        line-height: 40px;
+        text-align: center;
+        background-color: rgba(0, 0, 0, 0.2);
+        color: rgba(255, 255, 255, 1);
+        font-size: 12px;
+
+    }
+    canvas{
+      border:solid 1px #888;
+    }
+    .txt-parent{ font-size:100px; }
+    .text{ font-size:0.08em }
+
+    </style>
+</head>
+
+<body>
+    <script>
+    const src = "data:image/jpg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wgARCAAoAHgDASIAAhEBAxEB/8QAGQABAQEBAQEAAAAAAAAAAAAAAAUBBAMC/8QAGAEBAQEBAQAAAAAAAAAAAAAAAgEABAX/2gAMAwEAAhADEAAAAeJT9vP7Yqm12Xc5qZql7RRlNNk614IzMteEsxTazKedVMTKYqblfyum03TTEUvqKVtT422bb5qZqkKmgrBtUmDLAJ0Fn3ymzCUNv//EACEQAAEEAgICAwAAAAAAAAAAAAQAAgMSFCABNBATMTM1/9oACAEBAAEFAtBurqZ86VBUcAkiqEqgpjw446hKoSfAIxtQlUJSPDlVQVFAJNJUJVB8B7E/RoB3vGOOoWjxLHHWOOuQ4vXjjrHHUrR5GY464Ggc5wsLXY46HaPBP6B1jj6v/M0g7JPa0//EABsRAAMBAAMBAAAAAAAAAAAAAAABEgIQESEx/9oACAEDAQE/AbKE/WWUZfSLKNa8LRaHpdotFopdlrnPD+GfnP8A/8QAHBEAAwEAAwEBAAAAAAAAAAAAAAESAhARITEi/9oACAECAQE/AYJGvEQSaz2yCTOemQyGLPjIZDJ/PRD51wvpr7z/AP/EAC0QAAEDAAgDCAMAAAAAAAAAAAEAAgMEERIgMzSRkhQichAhJDEyYnOxQWGB/9oACAEBAAY/ArlL6Reg+Ft3Em0CdZkm5W2j3LEm0CxJtFIwPl5xV5LEm0WJNomOMkvOKx3LEm0WJNomVvl5WhvksSbQIRtkmrP6WJNoFiTadlI+F16jdF2P+/XbnG7CpPFNNthb6Cs43YVnG7Cg/im2Saq7CzjdhWcbsKibxTeRtXpKzjdhQaKW2s+xFppbax7Cs43YU2Timmr8WCs43YVnG7Ddi+Q3Yusfal6zd//EACIQAAECBgMBAQEAAAAAAAAAAAEAERAgITHw8UFRYZFxof/aAAgBAQABPyGTE9mUrAezDcnE4FhDbU0cRAicaMtPWkpgHoAWWurXVSnbWGoEBuK03CG2pwwvybD9lzvS5NYhV/xFGfmIQQJomhy/2IQTPK9vQCOBEAAff6gexGIsf2AR3ivsHo08QWE9lyvRYTuX/9oADAMBAAIAAwAAABAXxczKN3y9JScCQ8IP+B/8N/8A/8QAHxEBAAIBBQEBAQAAAAAAAAAAAQARkRAhMWFxUUGx/9oACAEDAQE/EEBaOJ5cSlKd+upQ2pxK/HEpBHEpdU4lfjiEsLwz0wwXj+MQm+GeuGHbhhZd+D8e56YdeL66c04Nf//EACARAAEDBAMBAQAAAAAAAAAAAAEAEZEhMWFxEEFR0bH/2gAIAQIBAT8QBEsCJW4lOgcUzlAj2JT/AESnEgiU5ncStxKMElpC0SPqbu0hEAKVyPUMMj6mbtIRJlDuexhaZHN40Pzi0ru+f//EACQQAAIBAwMFAQEBAAAAAAAAAAABESExQVFh8HGBkaHR4bHB/9oACAEBAAE/EKbslRYlcoJ8kdeybBNRcUZnuSpoStfLgoVX4YyVaDUepKWzJ3jZC6ryNj4HgR4p1tTFKuthLryOhufVv+DorrIRm5Udcmbh9BPcrn7F/wAbt1RWlChxfAoHHH2HLM2C9MNyr1Hm7vwKlNUVUTbrGiZHyPRkm46Cncaiy+iNpRTUhaE5meg5S+F/OdxKi6KVyUTKj3m74m3CGl9SmWRPmeRCiFHEhHU5iLeyi12/0Kn9voNWio9pdRUdb4ZFr74ZJDljTr5mJp7PwvoX1b2WcJdzGonz6ScNCtzPJJQE0Yk10vUruEzwubFw1O6HCyWWF0FRWgk4Gn8Q9xJOalMQz32GcUpYwR8289DjUw2vosuO8H//2Q=="
+    var image = new Image()
+    image.src = src
+    </script>
+    <div id="canvas-wrapper" style="margin:0 auto;display: inline-block;margin-top: 20px;"></div>
+    <div id="app">
+        <div class="txt-parent" style="white-space: nowrap;overflow: hidden;position: fixed;top:0;left:0;width:100%;font-size: 16px;text-align: center;color:#888">
+          <span class="text">
+            <span>
+                关卡:{{game.level}}
+            </span>
+            <span style="padding-left:10px;">
+                得分:{{game.score}}
+            </span>
+            <span style="padding-left:10px;">
+                连击:{{game.combo}}
+            </span>
+            <span style="padding-left:10px;">
+                最高连击:{{game.hicombo}}
+            </span>
+            <span style="padding-left:10px;">
+                最高分:{{game.hiscore}}
+            </span>
+          </span>
+        </div>
+        <div v-if="game.status === 1" class="btn-group" style="margin-top:10px">
+            <div class="btn-item" @click="shoot(index)" v-for="(item, index) in game.blockCol">
+                <div class="bg-gray"></div>
+            </div>
+        </div>
+        <div @click="start" v-if="game.status === 0" style="line-height: 50px;text-align: center; height: 50px;background-color:#ccc;width:100%;margin-top:10px">开始游戏</div>
+        <div v-if="game.status === 3" class="dialog">
+            游戏结束
+            <div @click="restart" style="text-align: center; white-space: nowrap; background-color:#ccc;width:100%;margin-top:10px;padding:10px 20px;display: inline-block;">重新开始</div>
+        </div>
+        <div class="btn-pause" @click="pause" v-if="game.status === 1 || game.status === 2">
+            {{game.status === 2 ? '继续' : '暂停'}}
+        </div>
+    </div>
+    <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script>
+    <script>
+    const guid = function() {
+        let i = 0
+        return () => Date.now() + '' + (++i + '')
+    }()
+
+
+    class BlockRow {
+        constructor(row, blockRowManager) {
+            this.id = guid()
+            this.row = row
+            this.blockRowManager = blockRowManager
+        }
+        destory() {
+            return this.blockRowManager.removeRow(this)
+        }
+        fill(index) {
+            this.row[index] = 1
+            return true
+        }
+        isFull() {
+            return !this.row.includes(0)
+        }
+        each(callback) {
+            for (let i = 0, len = this.row.length; i < len; i++) {
+                callback(this.row[i], i)
+            }
+        }
+        static create({ col, emptyCol }, blockRowManager) {
+            const row = Array.from({ length: col }).fill(1)
+            const keys = Object.keys(row)
+            const emptyIndexs = []
+            while (emptyIndexs.length < emptyCol) {
+                const index = parseInt(Math.random() * keys.length)
+                emptyIndexs.push(keys[index])
+                keys.splice(index, 1)
+            }
+            emptyIndexs.forEach(index => {
+                row[index] = 0
+            })
+            return new BlockRow(row, blockRowManager)
+        }
+    }
+
+
+    class BlockRowManager {
+        constructor(sceneMapCtx) {
+            this.blockRows = []
+            this.blockHeight = sceneMapCtx.blockHeight
+            this.sceneMapCtx = sceneMapCtx
+            this.offsetBottom = 0
+        }
+        removeRow(blockRow) {
+            const index = this.blockRows.findIndex(item => item.id === blockRow.id)
+            if (index !== -1) {
+                this.blockRows.splice(index, 1)
+                return true
+            }
+            return false
+        }
+        pushRow(blockRow) {
+            this.blockRows.push(blockRow)
+        }
+        unshiftRow(blockRow) {
+            this.blockRows.unshift(blockRow)
+        }
+        getRow(id) {
+            const ret = this.blockRows.find(row => row.id === id)
+            return ret ? ret : null
+        }
+        each(callback) {
+            for (let i = 0, len = this.blockRows.length; i < len; i++) {
+                callback(this.blockRows[i], i)
+            }
+        }
+        isArrivedBottom() {
+            return this.offsetBottom + (this.blockRows.length - 1) * this.blockHeight >= this.sceneMapCtx.height
+        }
+    }
+
+
+    class Bullet {
+        constructor(grid, sceneMapCtx) {
+            this.grid = grid
+            this.sceneMapCtx = sceneMapCtx
+            this.offsetTop = sceneMapCtx.height
+        }
+        destory() {
+            const index = this.sceneMapCtx.bullets.findIndex(bullet => bullet === this)
+            if (index !== -1) {
+                this.sceneMapCtx.bullets.splice(index, 1)
+                return true
+            }
+            return false
+        }
+        hit() {
+            const grid = this.grid
+            const maxIndex = this.sceneMapCtx.blockRowManager.blockRows.length - 1
+            let i = maxIndex
+            let matchedRow = null
+            let matchedIndex = null
+            while (i >= 0) {
+                const blockRow = this.sceneMapCtx.blockRowManager.blockRows[i]
+                if (blockRow.row[grid] !== 0) {
+                    break
+                } else {
+                    matchedRow = blockRow
+                    matchedIndex = i
+                    i--
+                }
+            }
+            const blockOffsetTop = this.sceneMapCtx.blockRowManager.offsetBottom + (matchedRow ? matchedIndex : maxIndex) * this.sceneMapCtx.blockHeight - this.sceneMapCtx.blockHeight
+            const offset = Math.abs(this.offsetTop - blockOffsetTop)
+            return { matchedRow, grid, isHit: offset <= 10 }
+        }
+        isFlyOutSceneMap() {
+            return this.offsetTop < -this.sceneMapCtx.blockHeight
+        }
+    }
+
+
+    class SceneMap {
+        constructor(gameCtx) {
+            const { width, height, blockCol, blockHeight, blockColor, el } = gameCtx
+            this.bullets = []
+            this.blockCol = blockCol
+            this.width = width
+            this.height = height
+            this.canvas = document.createElement('canvas')
+            this.ctx = this.canvas.getContext('2d')
+            this.canvas.width = width
+            this.canvas.height = height
+
+            this.blockWidth = Math.floor(width / blockCol)
+            this.blockHeight = blockHeight
+            this.blockColor = blockColor
+            this.el = document.querySelector(el)
+            this.el.appendChild(this.canvas)
+            this.gameCtx = gameCtx
+            this.timer = null
+            this.blockRowManager = new BlockRowManager(this)
+        }
+        drawBlock() {
+            this.ctx.clearRect(0, 0, this.width, this.height)
+            this.blockRowManager.each((blockRow, rowIndex) => {
+                blockRow.each((block, index) => {
+                    if (block) {
+                        const x = index * this.blockWidth
+                        const y = this.blockRowManager.offsetBottom + rowIndex * this.blockHeight - this.blockHeight
+                        if (this.gameCtx.blockImage) {
+                            this.ctx.drawImage(this.gameCtx.blockImage, x, y, this.blockWidth - 1, this.blockHeight - 1)
+                        } else {
+                            this.ctx.fillStyle = this.blockColor
+                            this.ctx.fillRect(x, y, this.blockWidth - 1, this.blockHeight - 1)
+                        }
+                    }
+                })
+            })
+        }
+        drawBullet() {
+            for (let i = 0; i < this.bullets.length; i++) {
+                const bullet = this.bullets[i]
+                bullet.offsetTop -= 10
+                const x = bullet.grid * this.blockWidth
+                const y = bullet.offsetTop
+                if (this.gameCtx.blockImage) {
+                    this.ctx.drawImage(this.gameCtx.blockImage, x, y, this.blockWidth - 1, this.blockHeight - 1)
+                } else {
+                    this.ctx.fillStyle = this.blockColor
+                    this.ctx.fillRect(x, y, this.blockWidth - 1, this.blockHeight - 1)
+                }
+                if (bullet.isFlyOutSceneMap()) {
+                    bullet.destory()
+                    return
+                }
+                const { isHit, matchedRow } = bullet.hit()
+                if (isHit) {
+                    bullet.destory()
+                    if (matchedRow === null) {
+                        const row = Array.from({ length: this.blockCol }).fill(0)
+                        row[bullet.grid] = 1
+                        const blockRow = new BlockRow(row, this.blockRowManager)
+                        this.blockRowManager.pushRow(blockRow)
+                        this.gameCtx.notity(false)
+                    } else {
+                        matchedRow.fill(bullet.grid)
+                        if (matchedRow.isFull()) {
+                            matchedRow.destory()
+                            this.gameCtx.notity(true)
+                        } else {
+                            this.gameCtx.notity(false)
+                        }
+                    }
+                }
+            }
+        }
+        shouldCreateBlock() {
+            if (this.blockRowManager.offsetBottom >= this.blockHeight) {
+                this.blockRowManager.offsetBottom = this.blockRowManager.offsetBottom - this.blockHeight
+                return true
+            }
+            return false
+        }
+        createBlock() {
+            this.blockRowManager.unshiftRow(BlockRow.create({ col: this.blockCol, emptyCol: 1 }, this.blockRowManager))
+        }
+        createBullet(grid) {
+            this.bullets.push(new Bullet(grid, this))
+        }
+        render() {
+            if (this.timer) {
+                return
+            }
+            this.timer = setInterval(() => {
+                if (this.shouldCreateBlock()) {
+                    this.createBlock()
+                }
+                this.drawBlock()
+                this.drawBullet()
+                if (this.blockRowManager.isArrivedBottom()) {
+                    this.stopRender()
+                    this.gameCtx.stop()
+                    return
+                }
+                this.blockRowManager.offsetBottom += this.gameCtx.speed
+            }, 0)
+        }
+        stopRender() {
+            if (this.timer) {
+                clearInterval(this.timer)
+                this.timer = null
+            }
+        }
+        clear() {
+            this.stopRender()
+            this.bullets = []
+            this.blockRowManager = new BlockRowManager(this)
+        }
+    }
+
+
+    class Game {
+        constructor({ width, height, blockCol, blockHeight, blockColor, el, initSpeed, blockImage }) {
+            this.hiscore = 0
+            this.hicombo = 0
+            this.combo = 0
+            this.score = 0
+            this.level = 1
+            this.status = 0 //  0.未开始 1.开始 2.暂停 3.结束
+            this.width = width
+            this.height = height
+            this.blockCol = blockCol
+            this.blockHeight = blockHeight
+            this.blockColor = blockColor
+            this.el = el
+            this.initSpeed = initSpeed
+            this.speed = initSpeed
+            this.blockImage = blockImage
+            this.sceneMap = new SceneMap(this)
+            this.onchange = null
+        }
+        start() {
+            this.status = 1
+            this.sceneMap.render()
+            this.emit()
+        }
+        pause() {
+            this.status = 2
+            this.sceneMap.stopRender()
+            this.emit()
+        }
+        stop() {
+            this.status = 3
+            this.sceneMap.stopRender()
+            this.emit()
+        }
+        reset() {
+            this.combo = 0
+            this.score = 0
+            this.level = 1
+            this.status = 0
+            this.speed = this.initSpeed
+            this.sceneMap.clear()
+            this.emit()
+        }
+        emit() {
+            const { hiscore, hicombo, combo, score, level, status } = this
+            this.onchange && this.onchange({ hiscore, hicombo, combo, score, level, status })
+        }
+
+        notity(isRemove) {
+            if (isRemove) {
+                this.combo++
+                if (this.combo > 5) {
+                    this.score += 5
+                } else if (this.combo > 3) {
+                    this.score += 2
+                } else {
+                    this.score += 1
+                }
+                if (this.combo > this.hicombo) {
+                    this.hicombo = this.combo
+                }
+                if (this.score > this.hiscore) {
+                    this.hiscore = this.score
+                }
+                this.level = Math.ceil(this.score / 400) || 1
+                const speed = (this.level - 1) * 0.05 + this.initSpeed
+                if (speed > 0.9) {
+                    speed = 0.9
+                }
+                this.speed = speed
+            } else {
+                this.combo = 0
+            }
+            this.emit()
+        }
+
+        shoot(grid) {
+            this.sceneMap.createBullet(grid)
+        }
+    }
+    </script>
+    <script>
+    new Vue({
+        el: "#app",
+        data: function() {
+            return {
+                game: new Game({
+                    width: 358,
+                    height: 400,
+                    blockCol: 3,
+                    blockHeight: 40,
+                    blockColor: '#eee',
+                    blockColor: '#0bb3a4',
+                    blockImage: image,
+                    el: "#canvas-wrapper",
+                    initSpeed: 0.25
+                })
+            }
+        },
+        mounted() {
+            this.registerKeyborad()
+        },
+        methods: {
+            restart() {
+                this.game.reset()
+                this.game.start()
+            },
+            start() {
+                this.game.start()
+            },
+            shoot(index) {
+                this.game.shoot(index)
+            },
+            pause() {
+                if (this.game.status === 1) {
+                    this.game.pause()
+                } else {
+                    this.game.start()
+                }
+            },
+            registerKeyborad() {
+                window.addEventListener('keydown', (e) => {
+                    const keycodeMapValue = { 37: 0, 38: 1, 39: 2, 97: 0, 98: 1, 99: 2, 65: 0, 83: 1, 68: 2 }
+                    const value = keycodeMapValue[e.keyCode]
+                    if (value !== undefined) {
+                        this.game.shoot(value)
+                    }
+                })
+            }
+        }
+    })
+    </script>
+</body>
+
+</html>
